@@ -29,10 +29,12 @@ $local_libs = [ '/home/goodspeed/Music' ];
 // Allowed extensions, anything without this will be ignored.
 $allowed_exts = [ '.mp3', '.flac', '.ogg', '.wav' ];
 
+// Allow all requests, change this if you want a strict policy.
+header('Access-Control-Allow-Origin: *');
+
 $fmap_fs = dirname(__LINE__) . '/fmap';
 $db_fs = dirname(__LINE__) . '/rhythmdb.xml';
 $db_exist = file_exists($db_fs);
-
 
 // for production, some of the functions may throw warnings and mess the output up.
 error_reporting(E_ERROR | E_PARSE);
