@@ -20,7 +20,8 @@
  *************************************************************************/
 
 // To disable authentication, change this to false.
-$secret = 'YOUR PASSWORD GOES HERE';
+//$secret = 'YOUR PASSWORD GOES HERE';
+$secret = false;
 
 // Path to your music library.
 $local_libs = [ '/home/goodspeed/Music' ];
@@ -41,7 +42,7 @@ error_reporting(E_ERROR | E_PARSE);
  *************************************************************************/
 
 require_once 'util.php';
-require 'library.php';
+require 'rhythmdb.php';
 
 /* Make sure we can trust this bro. :-) */
 if ($secret
@@ -71,13 +72,44 @@ switch ($_SERVER['PATH_INFO']) {
         ]);
         break;
 
-    case '/capabilites':
-        echo json_encode([ 'desc', 'list', 'fetch', 'metadata' ]);
+    case '/capabilities':
+        echo json_encode([ 'desc', 'list', 'fetch', 'metadata', 'multiple_metadata' ]);
         break;
 
     case '/list':
         $libm->update_map();
         echo json_encode(array_keys($libm->fmap));
+        break;
+
+    case '/multiple_metadata':
+        $req = json_decode(file_get_contents("php://input"));
+        if ($req === null)
+        {
+            http_response_code(400);
+            echo 'bad reuqest body, should be a list of ids';
+            die();
+        }
+
+        $ret_arr = array();
+        $xml = simplexml_import_dom($libm->db->xml);
+
+        foreach ($req as $song_id) {
+            foreach ($xml as $entry)
+            {
+                $metadata = (array) $entry;
+                if (md5($metadata['location']) != $song_id)
+                    continue;
+                unset($metadata['@attributes']);
+                $metadata['location'] = md5($metadata['location']);
+                $ret_arr[$song_id] = $metadata;
+                break;
+            }
+
+            if (!array_key_exists($song_id, $ret_arr))
+                $ret_arr[$song_id] = null;
+        }
+
+        echo json_encode($ret_arr);
         break;
 
     case '/metadata':
