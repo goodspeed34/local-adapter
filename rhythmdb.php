@@ -19,6 +19,19 @@ require 'getID3/getid3.php';
 require_once 'util.php';
 
 /**
+ * Get a tag from parsed vorbis comments.
+ *
+ * @param array $result A parsed result from getID3->analyze().
+ * @param string $name The name of the field your're requesting.
+ */
+function tag_from_vorbis($result, $name) {
+	if (array_key_exists('vorbiscomment', $result['tags']))
+		if (array_key_exists($name, $result['tags']['vorbiscomment']))
+			return implode('/', $result['tags']['vorbiscomment'][$name]);
+	return 'Unknown';
+}
+
+/**
  * Get a tag from parsed id3v1 or id3v2.
  *
  * @param array $result A parsed result from getID3->analyze().
@@ -104,20 +117,30 @@ class RhythmDBEntry
 		$this->set('bitrate', intval($metadata['audio']['bitrate']));
 		$this->set('duration', intval($metadata['playtime_seconds']));
 
-		$this->set('title', tag_from_id3v1or2($metadata, 'title'));
-		$this->set('artist',tag_from_id3v1or2($metadata, 'artist'));
-		$this->set('album', tag_from_id3v1or2($metadata, 'album'));
-		$this->set('genre', tag_from_id3v1or2($metadata, 'genre'));
+		switch ($metadata['mime_type']) {
+			case 'audio/mpeg':
+				$this->set('title', tag_from_id3v1or2($metadata, 'title'));
+				$this->set('artist',tag_from_id3v1or2($metadata, 'artist'));
+				$this->set('album', tag_from_id3v1or2($metadata, 'album'));
+				$this->set('genre', tag_from_id3v1or2($metadata, 'genre'));
 
-		if (($track_number = tag_from_id3v1or2($metadata, 'track_number')) !== 'Unknown')
-			$this->set('track-number', intval($track_number));
+				if (($track_number = tag_from_id3v1or2($metadata, 'track_number')) !== 'Unknown')
+					$this->set('track-number', intval($track_number));
 
-		if (($comment = tag_from_id3v1or2($metadata, 'comment')) !== 'Unknown')
-			$this->set('comment', $comment);
+				if (($comment = tag_from_id3v1or2($metadata, 'comment')) !== 'Unknown')
+					$this->set('comment', $comment);
+				break;
 
-		// Need to be fixed, causing tons of blank tags...
-		// if (($tpe = tpe_from_id3v2($metadata)) !== 'Unknown')
-		// 	$this->set('album-artist', $tpe[0]['data']);
+			case 'audio/flac':
+				$this->set('title', tag_from_vorbis($metadata, 'title'));
+				$this->set('artist',tag_from_vorbis($metadata, 'artist'));
+				$this->set('album', tag_from_vorbis($metadata, 'album'));
+				$this->set('genre', tag_from_vorbis($metadata, 'genre'));
+
+				if (($track_number = tag_from_vorbis($metadata, 'tracknumber')) !== 'Unknown')
+					$this->set('track-number', intval($track_number));
+				break;
+		}
 
 		/* Fallback to the filename if we don't know the title. */
 		if ($this->info['title'] === 'Unknown')
