@@ -217,6 +217,7 @@ class LibraryManager
         $iter = new RecursiveIteratorIterator($dir_e);
 
         foreach ($iter as $finfo) {
+        	if($dir_e->isDot()) continue;
             if($finfo->isDir()) continue;
 
             if (in_array($finfo->getRealPath(), array_values($this->fmap)))
